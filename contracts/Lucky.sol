@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "arbos-precompiles/arbos/builtin/ArbSys.sol";
 
 contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
     struct Metadata {
@@ -22,14 +23,15 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
     // Owner Functions
 
     function submit(uint256 _endTime, uint256 _annTime) external onlyOwner {
-        require(_endTime > block.number, "Invalid Time.");
+        uint256 blockNumber = ArbSys(address(100)).arbBlockNumber();
+        require(_endTime > blockNumber, "Invalid Time.");
         require(_annTime >= _endTime, "Invalid Time.");
 
         uint256 _tokenId = tokenIdLength++;
         address[] memory cs;
         _metadataOf[_tokenId] = Metadata({
             price: 0.001 ether,
-            startTime: block.number,
+            startTime: blockNumber,
             endTime: _endTime,
             annTime: _annTime,
             winner: address(0),
@@ -40,10 +42,11 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
     }
 
     function luckyDraw(uint256 tokenId) external onlyOwner {
+        uint256 blockNumber = ArbSys(address(100)).arbBlockNumber();
         require(tokenId < tokenIdLength, "Invalid TokenId.");
 
         Metadata storage meta = _metadataOf[tokenId];
-        require(meta.annTime <= block.number, "Invalid Time.");
+        require(meta.annTime <= blockNumber, "Invalid Time.");
         require(meta.winner == address(0), "Invalid Winner.");
         require(meta.candidates.length > 0, "Invalid Candidates.");
 
@@ -65,20 +68,22 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
     // User Functions
 
     function buy(uint256 tokenId) external payable {
+        uint256 blockNumber = ArbSys(address(100)).arbBlockNumber();
         require(tokenId < tokenIdLength, "Invalid TokenId.");
 
         Metadata storage meta = _metadataOf[tokenId];
-        require(meta.endTime >= block.number, "Invalid Time.");
+        require(meta.endTime >= blockNumber, "Invalid Time.");
         require(msg.value == meta.price, "Invalid Amounts.");
 
         meta.candidates.push(msg.sender);
     }
 
     function reward(uint256 tokenId) external {
+        uint256 blockNumber = ArbSys(address(100)).arbBlockNumber();
         require(tokenId < tokenIdLength, "Invalid TokenId.");
 
         Metadata storage meta = _metadataOf[tokenId];
-        require(meta.annTime <= block.number, "Invalid Time.");
+        require(meta.annTime <= blockNumber, "Invalid Time.");
         require(meta.winner != address(0), "Invalid Winner.");
 
         // _mint(meta.winner, tokenId);
