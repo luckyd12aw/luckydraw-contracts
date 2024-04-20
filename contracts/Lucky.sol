@@ -14,31 +14,34 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
         address[] candidates;
     }
 
-    mapping(uint256 tokenId => Metadata) public metadataOf;
+    mapping(uint256 tokenId => Metadata) internal _metadataOf;
     uint256 public tokenIdLength;
 
     constructor() {}
 
     // Owner Functions
 
-    function submit(uint256 _annTime) external onlyOwner {
+    function submit(uint256 _endTime, uint256 _annTime) external onlyOwner {
         require(_annTime > block.number, "Invalid Time.");
 
         uint256 _tokenId = tokenIdLength++;
-        Metadata storage meta = metadataOf[_tokenId];
-        meta.price = 0.001 ether;
-        meta.startTime = block.number;
-        meta.annTime = _annTime;
-
-        _mint(address(this), _tokenId);
+        address[] memory cs;
+        _metadataOf[_tokenId] = Metadata({
+            price: 0.001 ether,
+            startTime: block.number,
+            endTime: _endTime,
+            annTime: _annTime,
+            winner: address(0),
+            candidates: cs
+        });
     }
 
     function luckyDraw(uint256 tokenId) external onlyOwner {
         require(tokenId < tokenIdLength, "Invalid TokenId.");
 
-        Metadata storage meta = metadataOf[tokenId];
+        Metadata storage meta = _metadataOf[tokenId];
+        require(meta.annTime <= block.number, "Invalid Time.");
         require(meta.winner == address(0), "Invalid Winner.");
-        meta.endTime = block.number;
 
         require(meta.candidates.length != 0, "Invalid Candidates.");
         meta.winner = meta.candidates[
@@ -61,7 +64,8 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
     function buy(uint256 tokenId) external payable {
         require(tokenId < tokenIdLength, "Invalid TokenId.");
 
-        Metadata storage meta = metadataOf[tokenId];
+        Metadata storage meta = _metadataOf[tokenId];
+        require(meta.endTime >= block.number, "Invalid Time.");
         require(msg.value == meta.price, "Invalid Amounts.");
 
         meta.candidates.push(msg.sender);
@@ -70,7 +74,7 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
     function reward(uint256 tokenId) external {
         require(tokenId < tokenIdLength, "Invalid TokenId.");
 
-        Metadata storage meta = metadataOf[tokenId];
+        Metadata storage meta = _metadataOf[tokenId];
         require(meta.annTime <= block.number, "Invalid Time.");
         require(meta.winner != address(0), "Invalid Winner.");
 
@@ -80,15 +84,22 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
 
     // View Functions
 
-    function allTokens() external view returns (Metadata[] memory metas) {
+    function metadataOf(
+        uint256 tokenId
+    ) external view returns (Metadata memory meta) {
+        return _metadataOf[tokenId];
+    }
+
+    function allMetadata() external view returns (Metadata[] memory metas) {
         metas = new Metadata[](tokenIdLength);
         for (uint256 i = 0; i < tokenIdLength; i++) {
-            Metadata memory meta = metadataOf[i];
+            Metadata memory meta = _metadataOf[i];
             metas[i].price = meta.price;
             metas[i].startTime = meta.startTime;
             metas[i].endTime = meta.endTime;
             metas[i].annTime = meta.annTime;
             metas[i].winner = meta.winner;
+            metas[i].candidates = meta.candidates;
         }
     }
 }
