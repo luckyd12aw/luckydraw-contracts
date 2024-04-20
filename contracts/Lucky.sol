@@ -22,7 +22,8 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
     // Owner Functions
 
     function submit(uint256 _endTime, uint256 _annTime) external onlyOwner {
-        require(_annTime > block.number, "Invalid Time.");
+        require(_endTime > block.number, "Invalid Time.");
+        require(_annTime >= _endTime, "Invalid Time.");
 
         uint256 _tokenId = tokenIdLength++;
         address[] memory cs;
@@ -34,6 +35,8 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
             winner: address(0),
             candidates: cs
         });
+
+        _mint(address(this), _tokenId);
     }
 
     function luckyDraw(uint256 tokenId) external onlyOwner {
@@ -42,8 +45,8 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
         Metadata storage meta = _metadataOf[tokenId];
         require(meta.annTime <= block.number, "Invalid Time.");
         require(meta.winner == address(0), "Invalid Winner.");
+        require(meta.candidates.length > 0, "Invalid Candidates.");
 
-        require(meta.candidates.length != 0, "Invalid Candidates.");
         meta.winner = meta.candidates[
             // TODO: random
             uint256(blockhash(block.number - 1) | bytes32(block.timestamp)) %
@@ -87,6 +90,8 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
     function metadataOf(
         uint256 tokenId
     ) external view returns (Metadata memory meta) {
+        require(tokenId < tokenIdLength, "Invalid TokenId.");
+
         return _metadataOf[tokenId];
     }
 
@@ -94,12 +99,7 @@ contract Lucky is ERC721("Lucky Draw", "LUK"), Ownable(msg.sender) {
         metas = new Metadata[](tokenIdLength);
         for (uint256 i = 0; i < tokenIdLength; i++) {
             Metadata memory meta = _metadataOf[i];
-            metas[i].price = meta.price;
-            metas[i].startTime = meta.startTime;
-            metas[i].endTime = meta.endTime;
-            metas[i].annTime = meta.annTime;
-            metas[i].winner = meta.winner;
-            metas[i].candidates = meta.candidates;
+            metas[i] = meta;
         }
     }
 }
