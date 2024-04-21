@@ -1,5 +1,9 @@
 # LuckyDraw
 
+## Overview
+
+This contract is for conducting a lucky draw with pre-purchased NFTs.
+
 ## Demo
 
 https://luckyd12aw.github.io/luckydraw-webapp/
